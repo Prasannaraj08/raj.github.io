@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Product Price Comparison</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      max-width: 600px;
+      margin: auto;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      width: 70%;
+    }
+    button {
+      width: 25%;
+    }
+    .results {
+      margin-top: 20px;
+    }
+    .results a {
+      display: block;
+      margin: 10px 0;
+      padding: 10px;
+      background-color: #f0f0f0;
+      border-radius: 5px;
+      text-decoration: none;
+      color: #333;
+    }
+    .results a:hover {
+      background-color: #e0e0e0;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Search Product Across Online Stores</h2>
+  <input type="text" id="productInput" placeholder="Enter product name..." />
+  <button onclick="searchProduct()">Search</button>
+
+  <div class="results" id="results"></div>
+
+  <script>
+    function searchProduct() {
+      const query = document.getElementById("productInput").value.trim();
+      const resultsDiv = document.getElementById("results");
+      resultsDiv.innerHTML = ""; // clear previous
+
+      if (query === "") {
+        resultsDiv.innerHTML = "<p>Please enter a product name.</p>";
+        return;
+      }
+
+      const encodedQuery = encodeURIComponent(query);
+
+      const sites = [
+        { name: "Amazon", url: https://www.amazon.in/s?k=${encodedQuery} },
+        { name: "Flipkart", url: https://www.flipkart.com/search?q=${encodedQuery} },
+        { name: "Google Shopping", url: https://www.google.com/search?tbm=shop&q=${encodedQuery} },
+        { name: "Croma", url: https://www.croma.com/search/?text=${encodedQuery} },
+        { name: "Reliance Digital", url: https://www.reliancedigital.in/search?q=${encodedQuery} }
+      ];
+
+      sites.forEach(site => {
+        const link = document.createElement("a");
+        link.href = site.url;
+        link.target = "_blank";
+        link.textContent = View results on ${site.name};
+        resultsDiv.appendChild(link);
+      });
+    }
+  </script>
+
+</body>
+</html>
