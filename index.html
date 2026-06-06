@@ -1,191 +1,304 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<title>Screen Recorder with Microphone</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Screen Recorder</title>
 
-<style>
-body{
-font-family: Arial, sans-serif;
-text-align:center;
-background:#f4f6f9;
-padding:30px;
-}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #f5f7fa;
+            padding: 30px;
+        }
 
-h2{
-color:#333;
-}
+        h1 {
+            color: #333;
+        }
 
-button{
-padding:12px 25px;
-font-size:16px;
-margin:10px;
-border:none;
-border-radius:6px;
-cursor:pointer;
-}
+        button {
+            padding: 12px 20px;
+            margin: 8px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+        }
 
-#startBtn{
-background:#28a745;
-color:white;
-}
+        #startBtn {
+            background: #28a745;
+            color: white;
+        }
 
-#stopBtn{
-background:#dc3545;
-color:white;
-}
+        #pauseBtn {
+            background: #ffc107;
+        }
 
-#downloadLink{
-display:none;
-margin-top:15px;
-font-size:18px;
-}
+        #resumeBtn {
+            background: #17a2b8;
+            color: white;
+        }
 
-video{
-width:80%;
-margin-top:20px;
-border-radius:10px;
-box-shadow:0px 4px 10px rgba(0,0,0,0.2);
-}
+        #stopBtn {
+            background: #dc3545;
+            color: white;
+        }
 
-#timer{
-font-size:18px;
-font-weight:bold;
-margin-top:10px;
-color:#444;
-}
-</style>
+        #timer {
+            margin-top: 15px;
+            font-size: 20px;
+            font-weight: bold;
+        }
 
+        video {
+            width: 85%;
+            margin-top: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
+        }
+
+        #downloadLink {
+            display: none;
+            margin-top: 20px;
+            font-size: 18px;
+            text-decoration: none;
+        }
+    </style>
 </head>
 
 <body>
 
-<h2>🎥 Screen Recorder with Microphone</h2>
+    <h1>🎥 Advanced Screen Recorder</h1>
 
-<button id="startBtn">Start Recording</button>
-<button id="stopBtn" disabled>Stop Recording</button>
+    <button id="startBtn">Start Recording</button>
+    <button id="pauseBtn" disabled>Pause</button>
+    <button id="resumeBtn" disabled>Resume</button>
+    <button id="stopBtn" disabled>Stop</button>
 
-<div id="timer">Recording Time: 00:00</div>
+    <div id="timer">Recording Time: 00:00</div>
 
-<br>
+    <br>
 
-<a id="downloadLink" download="screen_recording.webm">⬇ Download Recording</a>
+    <a id="downloadLink">⬇ Download Recording</a>
 
-<br>
+    <video id="preview" autoplay muted controls></video>
 
-<video id="preview" controls autoplay muted></video>
+    <script>
 
-<script>
+        let mediaRecorder;
+        let recordedChunks = [];
 
-let mediaRecorder;
-let recordedChunks = [];
-let timerInterval;
-let seconds = 0;
+        let timerInterval;
+        let seconds = 0;
 
-const startBtn = document.getElementById("startBtn");
-const stopBtn = document.getElementById("stopBtn");
-const video = document.getElementById("preview");
-const downloadLink = document.getElementById("downloadLink");
-const timer = document.getElementById("timer");
+        let screenStream;
+        let micStream;
+        let combinedStream;
 
-function updateTimer(){
-seconds++;
+        const startBtn = document.getElementById("startBtn");
+        const pauseBtn = document.getElementById("pauseBtn");
+        const resumeBtn = document.getElementById("resumeBtn");
+        const stopBtn = document.getElementById("stopBtn");
 
-let mins = String(Math.floor(seconds/60)).padStart(2,'0');
-let secs = String(seconds%60).padStart(2,'0');
+        const preview = document.getElementById("preview");
+        const downloadLink = document.getElementById("downloadLink");
+        const timer = document.getElementById("timer");
 
-timer.innerText = "Recording Time: " + mins + ":" + secs;
-}
+        function updateTimer() {
 
-startBtn.onclick = async () => {
+            seconds++;
 
-try{
+            const mins = String(Math.floor(seconds / 60)).padStart(2, "0");
+            const secs = String(seconds % 60).padStart(2, "0");
 
-// Get screen
-const screenStream = await navigator.mediaDevices.getDisplayMedia({
-video:true
-});
+            timer.textContent = `Recording Time: ${mins}:${secs}`;
+        }
 
-// Get microphone
-const micStream = await navigator.mediaDevices.getUserMedia({
-audio:true
-});
+        async function startRecording() {
 
-// Combine streams
-const combinedStream = new MediaStream([
-...screenStream.getVideoTracks(),
-...micStream.getAudioTracks()
-]);
+            try {
 
-video.srcObject = combinedStream;
+                screenStream =
+                    await navigator.mediaDevices.getDisplayMedia({
+                        video: true,
+                        audio: true
+                    });
 
-recordedChunks = [];
+                micStream =
+                    await navigator.mediaDevices.getUserMedia({
+                        audio: true
+                    });
 
-// Recorder settings
-mediaRecorder = new MediaRecorder(combinedStream,{
-mimeType:"video/webm; codecs=vp9"
-});
+                combinedStream = new MediaStream([
+                    ...screenStream.getVideoTracks(),
+                    ...screenStream.getAudioTracks(),
+                    ...micStream.getAudioTracks()
+                ]);
 
-// Save chunks
-mediaRecorder.ondataavailable = e => {
-if(e.data.size > 0){
-recordedChunks.push(e.data);
-}
-};
+                preview.srcObject = combinedStream;
 
-// When recording stops
-mediaRecorder.onstop = () => {
+                recordedChunks = [];
 
-clearInterval(timerInterval);
-seconds = 0;
-timer.innerText = "Recording Time: 00:00";
+                let options = {};
 
-const blob = new Blob(recordedChunks,{type:"video/webm"});
-const url = URL.createObjectURL(blob);
+                if (
+                    MediaRecorder.isTypeSupported(
+                        "video/webm;codecs=vp9"
+                    )
+                ) {
+                    options = {
+                        mimeType: "video/webm;codecs=vp9",
+                        videoBitsPerSecond: 5000000
+                    };
+                }
 
-downloadLink.href = url;
-downloadLink.style.display = "inline";
+                mediaRecorder =
+                    new MediaRecorder(combinedStream, options);
 
-};
+                mediaRecorder.ondataavailable = (event) => {
 
-// If user stops screen sharing
-screenStream.getVideoTracks()[0].onended = () =>{
-stopRecording();
-};
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
 
-mediaRecorder.start();
+                mediaRecorder.onstop = saveRecording;
 
-timerInterval = setInterval(updateTimer,1000);
+                mediaRecorder.start();
 
-startBtn.disabled = true;
-stopBtn.disabled = false;
+                timerInterval =
+                    setInterval(updateTimer, 1000);
 
-}catch(err){
+                startBtn.disabled = true;
+                pauseBtn.disabled = false;
+                stopBtn.disabled = false;
 
-alert("Error: "+err.message);
+                screenStream
+                    .getVideoTracks()[0]
+                    .onended = () => {
 
-}
+                    stopRecording();
+                };
 
-};
+            }
+            catch (error) {
 
-stopBtn.onclick = stopRecording;
+                alert(
+                    "Unable to start recording.\n\n" +
+                    error.message
+                );
+            }
+        }
 
-function stopRecording(){
+        function pauseRecording() {
 
-if(mediaRecorder && mediaRecorder.state !== "inactive"){
-mediaRecorder.stop();
-}
+            if (
+                mediaRecorder &&
+                mediaRecorder.state === "recording"
+            ) {
 
-if(video.srcObject){
-video.srcObject.getTracks().forEach(track=>track.stop());
-}
+                mediaRecorder.pause();
 
-startBtn.disabled = false;
-stopBtn.disabled = true;
+                clearInterval(timerInterval);
 
-}
+                pauseBtn.disabled = true;
+                resumeBtn.disabled = false;
+            }
+        }
 
-</script>
+        function resumeRecording() {
+
+            if (
+                mediaRecorder &&
+                mediaRecorder.state === "paused"
+            ) {
+
+                mediaRecorder.resume();
+
+                timerInterval =
+                    setInterval(updateTimer, 1000);
+
+                pauseBtn.disabled = false;
+                resumeBtn.disabled = true;
+            }
+        }
+
+        function stopRecording() {
+
+            if (
+                mediaRecorder &&
+                mediaRecorder.state !== "inactive"
+            ) {
+                mediaRecorder.stop();
+            }
+
+            clearInterval(timerInterval);
+
+            if (combinedStream) {
+
+                combinedStream
+                    .getTracks()
+                    .forEach(track => track.stop());
+            }
+
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            resumeBtn.disabled = true;
+            stopBtn.disabled = true;
+        }
+
+        function saveRecording() {
+
+            clearInterval(timerInterval);
+
+            const blob =
+                new Blob(recordedChunks, {
+                    type: "video/webm"
+                });
+
+            const videoURL =
+                URL.createObjectURL(blob);
+
+            const now = new Date();
+
+            const filename =
+                `screen-recording-${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}-${now.getHours()}-${now.getMinutes()}.webm`;
+
+            preview.srcObject = null;
+            preview.src = videoURL;
+
+            downloadLink.href = videoURL;
+            downloadLink.download = filename;
+            downloadLink.style.display = "inline-block";
+
+            seconds = 0;
+            timer.textContent =
+                "Recording Time: 00:00";
+        }
+
+        startBtn.addEventListener(
+            "click",
+            startRecording
+        );
+
+        pauseBtn.addEventListener(
+            "click",
+            pauseRecording
+        );
+
+        resumeBtn.addEventListener(
+            "click",
+            resumeRecording
+        );
+
+        stopBtn.addEventListener(
+            "click",
+            stopRecording
+        );
+
+    </script>
 
 </body>
 </html>
